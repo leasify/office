@@ -92,8 +92,8 @@ class TemplateService
         }
 
         // Loop through every sheet
-        foreach ($driver->sheets as $sheet) {
-            $driver->changeSheet($sheet);
+        foreach ($driver->sheetNames as $sheetName) {
+            $driver->changeSheet($sheetName);
 
             // Get schema of the document
             $schema = $this->parser->schema($driver->getValues(null), $data, $driver->getMergeCells())->toArray();

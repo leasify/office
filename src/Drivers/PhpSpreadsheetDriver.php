@@ -34,7 +34,7 @@ class PhpSpreadsheetDriver implements TemplateInterface, GridInterface, MixInter
     /**
      * @var string[]
      */
-    public array $sheets;
+    public array $sheetNames;
 
     /**
      * {@inheritDoc}
@@ -44,6 +44,7 @@ class PhpSpreadsheetDriver implements TemplateInterface, GridInterface, MixInter
     {
         $this->spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $this->sheet = $this->spreadsheet->getActiveSheet();
+        $this->sheetNames = $this->spreadsheet->getSheetNames();
 
         return $this;
     }
@@ -56,6 +57,7 @@ class PhpSpreadsheetDriver implements TemplateInterface, GridInterface, MixInter
     {
         $this->spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::createReader($this->getFormat($format))->load($file);
         $this->sheet = $this->spreadsheet->getActiveSheet();
+        $this->sheetNames = $this->spreadsheet->getSheetNames();
 
         return $this;
     }
