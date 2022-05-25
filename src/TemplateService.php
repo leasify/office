@@ -72,7 +72,7 @@ class TemplateService
     ): Generated {
         // Get instance of driver
         $driver = new $this->driverClass();
-        if (! $driver instanceof \AnourValar\Office\Drivers\TemplateInterface) {
+        if (!$driver instanceof \AnourValar\Office\Drivers\TemplateInterface) {
             throw new \LogicException('Driver must implements TemplateInterface.');
         }
 
@@ -91,51 +91,56 @@ class TemplateService
             ($this->hookBefore)($driver, $data);
         }
 
-        // Get schema of the document
-        $schema = $this->parser->schema($driver->getValues(null), $data, $driver->getMergeCells())->toArray();
+        // Loop through every sheet
+        foreach ($driver->sheets as $sheet) {
+            $driver->changeSheet($sheet);
 
-        // rows
-        foreach ($schema['rows'] as $row) {
-            if ($row['action'] == 'add') {
-                $driver->addRow($row['row']);
-            } elseif ($row['action'] == 'delete') {
-                $driver->deleteRow($row['row']);
-            } else {
-                throw new \LogicException('Incorrect usage.');
+            // Get schema of the document
+            $schema = $this->parser->schema($driver->getValues(null), $data, $driver->getMergeCells())->toArray();
+
+            // rows
+            foreach ($schema['rows'] as $row) {
+                if ($row['action'] == 'add') {
+                    $driver->addRow($row['row']);
+                } elseif ($row['action'] == 'delete') {
+                    $driver->deleteRow($row['row']);
+                } else {
+                    throw new \LogicException('Incorrect usage.');
+                }
             }
-        }
 
-        // copy_style
-        foreach ($schema['copy_style'] as $item) {
-            $driver->copyStyle($item['from'], $item['to']);
-        }
-
-        // merge_cells
-        foreach ($schema['merge_cells'] as $item) {
-            $driver->mergeCells($item);
-        }
-
-        // copy_width
-        foreach ($schema['copy_width'] as $item) {
-            $driver->copyWidth($item['from'], $item['to']);
-        }
-
-        // copy_cell_format
-        if (! $autoCellFormat) {
-            foreach ($schema['copy_cell_format'] as $item) {
-                $driver->copyCellFormat($item['from'], $item['to']);
+            // copy_style
+            foreach ($schema['copy_style'] as $item) {
+                $driver->copyStyle($item['from'], $item['to']);
             }
-        }
 
-        // Decode data
-        $schema = $this->handleValue($schema, $driver);
+            // merge_cells
+            foreach ($schema['merge_cells'] as $item) {
+                $driver->mergeCells($item);
+            }
 
-        // Replace markers (and last but not least :D)
-        $driver->setValues($schema['data'], $autoCellFormat);
+            // copy_width
+            foreach ($schema['copy_width'] as $item) {
+                $driver->copyWidth($item['from'], $item['to']);
+            }
 
-        // Hook: after
-        if ($this->hookAfter) {
-            ($this->hookAfter)($driver);
+            // copy_cell_format
+            if (!$autoCellFormat) {
+                foreach ($schema['copy_cell_format'] as $item) {
+                    $driver->copyCellFormat($item['from'], $item['to']);
+                }
+            }
+
+            // Decode data
+            $schema = $this->handleValue($schema, $driver);
+
+            // Replace markers (and last but not least :D)
+            $driver->setValues($schema['data'], $autoCellFormat);
+
+            // Hook: after
+            if ($this->hookAfter) {
+                ($this->hookAfter)($driver);
+            }
         }
 
         return new Generated($driver);
@@ -219,10 +224,10 @@ class TemplateService
 
                 if ($value instanceof \Closure) {
                     // Private Closure
-                    $value = $value($driver, $column.$row);
+                    $value = $value($driver, $column . $row);
                 } elseif ($this->hookValue) {
                     // Hook: value
-                    $value = ($this->hookValue)($driver, $column.$row, $value);
+                    $value = ($this->hookValue)($driver, $column . $row, $value);
                 }
 
                 if (!$isNull && is_null($value)) {

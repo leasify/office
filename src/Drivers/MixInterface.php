@@ -26,4 +26,12 @@ interface MixInterface
      * @return self
      */
     public function mergeDriver(\AnourValar\Office\Drivers\MixInterface $driver): self;
+
+    /**
+     * Change current sheet
+     *
+     * @param string $sheetName
+     * @return void
+     */
+    public function changeSheet(string $sheetName): void;
 }

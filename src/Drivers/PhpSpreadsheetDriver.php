@@ -29,7 +29,12 @@ class PhpSpreadsheetDriver implements TemplateInterface, GridInterface, MixInter
     /**
      * @var \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet
      */
-    public readonly \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet;
+    public \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet;
+
+    /**
+     * @var string[]
+     */
+    public array $sheets;
 
     /**
      * {@inheritDoc}
@@ -87,7 +92,6 @@ class PhpSpreadsheetDriver implements TemplateInterface, GridInterface, MixInter
             if ($autoCellFormat) {
                 $this->setCellFormat($cell, static::FORMAT_DATE);
             }
-
         } elseif (is_string($value) || is_null($value)) {
 
             if (is_numeric($value)) {
@@ -95,7 +99,6 @@ class PhpSpreadsheetDriver implements TemplateInterface, GridInterface, MixInter
             } else {
                 $this->sheet->setCellValue($cell, $value);
             }
-
         } else {
 
             if ($autoCellFormat && is_double($value)) {
@@ -105,7 +108,6 @@ class PhpSpreadsheetDriver implements TemplateInterface, GridInterface, MixInter
             }
 
             $this->sheet->getCell($cell)->setValueExplicit($value, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
-
         }
 
         return $this;
@@ -119,7 +121,7 @@ class PhpSpreadsheetDriver implements TemplateInterface, GridInterface, MixInter
     {
         foreach ($data as $row => $columns) {
             foreach ($columns as $column => $value) {
-                $this->setValue($column.$row, $value, $autoCellFormat);
+                $this->setValue($column . $row, $value, $autoCellFormat);
             }
         }
 
@@ -139,7 +141,7 @@ class PhpSpreadsheetDriver implements TemplateInterface, GridInterface, MixInter
 
             foreach ($values as $value) {
                 if ($value !== '' && $value !== null) {
-                    $this->setValue($column.$row, $value);
+                    $this->setValue($column . $row, $value);
                 }
 
                 $column++;
@@ -166,7 +168,7 @@ class PhpSpreadsheetDriver implements TemplateInterface, GridInterface, MixInter
      */
     public function getValues(?string $ceilRange): array
     {
-        if (! $ceilRange) {
+        if (!$ceilRange) {
             $ceilRange = sprintf('A1:%s%s', $this->sheet->getHighestColumn(), $this->sheet->getHighestRow());
         }
 
@@ -185,7 +187,7 @@ class PhpSpreadsheetDriver implements TemplateInterface, GridInterface, MixInter
      */
     public function getMergeCells(): array
     {
-        return array_values( $this->sheet->getMergeCells() );
+        return array_values($this->sheet->getMergeCells());
     }
 
     /**
@@ -435,8 +437,7 @@ class PhpSpreadsheetDriver implements TemplateInterface, GridInterface, MixInter
         }
 
         if (isset($style['align'])) {
-            $align = match($style['align'])
-            {
+            $align = match ($style['align']) {
                 \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT => 'left',
                 \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER => 'center',
                 \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT => 'right',
@@ -449,8 +450,7 @@ class PhpSpreadsheetDriver implements TemplateInterface, GridInterface, MixInter
         }
 
         if (isset($style['valign'])) {
-            $valign = match($style['valign'])
-            {
+            $valign = match ($style['valign']) {
                 \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP => 'top',
                 \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER => 'center',
                 \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_BOTTOM => 'bottom',
@@ -518,11 +518,19 @@ class PhpSpreadsheetDriver implements TemplateInterface, GridInterface, MixInter
      */
     protected function getFormat(\AnourValar\Office\Format $format): string
     {
-        return match($format) {
+        return match ($format) {
             \AnourValar\Office\Format::Xlsx => 'Xlsx',
             \AnourValar\Office\Format::Pdf => 'Mpdf',
             \AnourValar\Office\Format::Html => 'Html',
             \AnourValar\Office\Format::Ods => 'Ods',
         };
+    }
+
+    /**
+     * @param string $sheetName
+     */
+    public function changeSheet(string $sheetName): void
+    {
+        $this->sheet = $this->spreadsheet->getSheetByName($sheetName);
     }
 }
