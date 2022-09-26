@@ -143,8 +143,6 @@ class TemplateService
             }
         }
 
-        $driver->changeSheet($driver->sheetNames[0]);
-
         return new Generated($driver);
     }
 
