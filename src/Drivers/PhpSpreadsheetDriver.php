@@ -71,6 +71,9 @@ class PhpSpreadsheetDriver implements TemplateInterface, GridInterface, MixInter
         $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($this->spreadsheet, $this->getFormat($format));
         $this->sheet->setSelectedCells('A1');
 
+        // Prio first sheet when open
+        $this->spreadsheet->setActiveSheetIndex(0);
+
         if (method_exists($writer, 'writeAllSheets')) {
             $writer->writeAllSheets();
         }
