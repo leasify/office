@@ -2,52 +2,54 @@
 
 namespace AnourValar\Office;
 
+use AnourValar\Office\Drivers\GridInterface;
+
 class GridService
 {
     /**
-     * @var string
+     * @var \AnourValar\Office\Drivers\GridInterface
      */
-    protected string $driverClass;
+    protected \AnourValar\Office\Drivers\GridInterface $driver;
 
     /**
      * Actions with template before data inserted
      *
-     * @var \Closure(GridInterface $driver, array &$headers, iterable &$data, string $leftTopCorner)|null
+     * @var \Closure(GridInterface $driver, array &$headers, iterable &$data, string $leftTopCorner)
      */
     protected ?\Closure $hookBefore = null;
 
     /**
      * Header handler
      *
-     * @var \Closure(GridInterface $driver, mixed $header, string|int $key, string $column)|null
+     * @var \Closure(GridInterface $driver, mixed $header, string|int $key, string $column)
      */
     protected ?\Closure $hookHeader = null;
 
     /**
      * Row data handler
      *
-     * @var \Closure(GridInterface $driver, mixed $row, string|int $key)|null
+     * @var \Closure(GridInterface $driver, mixed $row, string|int $key)
      */
     protected ?\Closure $hookRow = null;
 
     /**
      * Actions with template after data inserted
      *
-     * @var \Closure(GridInterface $driver, ?string $headersRange, ?string $dataRange, ?string $totalRange, array $columns)|null
+     * @var \Closure(GridInterface $driver, ?string $headersRange, ?string $dataRange, ?string $totalRange, array $columns)
      */
     protected ?\Closure $hookAfter = null;
 
     /**
-     * @param string $driverClass
+     * @param \AnourValar\Office\Drivers\GridInterface $driver
      * @return void
      */
-    public function __construct(string $driverClass = \AnourValar\Office\Drivers\PhpSpreadsheetDriver::class)
+    public function __construct(GridInterface $driver = new \AnourValar\Office\Drivers\PhpSpreadsheetDriver())
     {
-        $this->driverClass = $driverClass;
+        $this->driver = $driver;
     }
 
     /**
-     * Generate a document from data (grid)
+     * Generate a document from the template (grid)
      *
      * @param array $headers
      * @param iterable|\Closure<iterable> $data
@@ -56,19 +58,13 @@ class GridService
      */
     public function generate(array $headers, iterable|\Closure $data, string $leftTopCorner = 'A1'): Generated
     {
-        // Get instance of driver
-        $driver = new $this->driverClass();
-        if (! $driver instanceof \AnourValar\Office\Drivers\GridInterface) {
-            throw new \LogicException('Driver must implements GridInterface.');
-        }
-
         // Handle with data
         if ($data instanceof \Closure) {
             $data = $data();
         }
 
         // Create new document
-        $driver->create();
+        $driver = $this->driver->create();
 
         // Hook: before
         if ($this->hookBefore) {
@@ -141,19 +137,6 @@ class GridService
     }
 
     /**
-     * Set driver class
-     *
-     * @param string $driverClass
-     * @return self
-     */
-    public function setDriverClass(string $driverClass): self
-    {
-        $this->driverClass = $driverClass;
-
-        return $this;
-    }
-
-    /**
      * @param \AnourValar\Office\Drivers\GridInterface $driver
      * @param array $headers
      * @param iterable $data
@@ -174,8 +157,7 @@ class GridService
         &$totalRange = null,
         &$columns = null
     ): \Closure {
-        return function () use ($driver, &$headers, &$data, $leftTopCorner, &$headersRange, &$dataRange, &$totalRange, &$columns)
-        {
+        return function () use ($driver, &$headers, &$data, $leftTopCorner, &$headersRange, &$dataRange, &$totalRange, &$columns) {
             $ltc = preg_split('|([A-Z]+)|', $leftTopCorner, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
 
             // left top corner: row
@@ -253,17 +235,23 @@ class GridService
             // Statistic
             $headersRange = null;
             if ($hasHeaders) {
-                $headersRange = sprintf("%s%d:%s%d", $firstColumn, $headerRow, $lastColumn, $headerRow);
+                $headersRange = sprintf('%s%d:%s%d', $firstColumn, $headerRow, $lastColumn, $headerRow);
             }
 
             $dataRange = null;
             if ($dataRow != $headerRow) {
-                $dataRange = sprintf("%s%d:%s%d", $firstColumn, ($headerRow + 1), $lastColumn, $dataRow);
+                $dataRange = sprintf('%s%d:%s%d', $firstColumn, ($headerRow + 1), $lastColumn, $dataRow);
             }
 
             $totalRange = null;
             if ($hasHeaders || $dataRow != $headerRow) {
-                $totalRange = sprintf("%s%d:%s%d", $firstColumn, ($hasHeaders ? $headerRow : ($headerRow + 1)), $lastColumn, $dataRow);
+                $totalRange = sprintf(
+                    '%s%d:%s%d',
+                    $firstColumn,
+                    ($hasHeaders ? $headerRow : ($headerRow + 1)),
+                    $lastColumn,
+                    $dataRow
+                );
             }
 
             $columns = [];

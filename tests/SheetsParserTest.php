@@ -2,12 +2,12 @@
 
 namespace AnourValar\Office\Tests;
 
-class TemplateParserTest extends \PHPUnit\Framework\TestCase
+class SheetsParserTest extends \PHPUnit\Framework\TestCase
 {
     /**
-     * @var \AnourValar\Office\Template\Parser
+     * @var \AnourValar\Office\Sheets\Parser
      */
-    protected \AnourValar\Office\Template\Parser $service;
+    protected \AnourValar\Office\Sheets\Parser $service;
 
     /**
      * @see \PHPUnit\Framework\TestCase
@@ -16,7 +16,7 @@ class TemplateParserTest extends \PHPUnit\Framework\TestCase
      */
     protected function setUp(): void
     {
-        $this->service = new \AnourValar\Office\Template\Parser();
+        $this->service = new \AnourValar\Office\Sheets\Parser();
     }
 
     /**
@@ -2332,7 +2332,7 @@ class TemplateParserTest extends \PHPUnit\Framework\TestCase
 
                     'copy_width' => [
                         ['from' => 'C', 'to' => 'D'],
-                        ['from' => 'C', 'to' => 'E']
+                        ['from' => 'C', 'to' => 'E'],
                     ],
 
                     'copy_cell_format' => [
@@ -3272,7 +3272,7 @@ class TemplateParserTest extends \PHPUnit\Framework\TestCase
                     'comment' => 'bar',
                     'list' => [
                         ['name' => 'Product 1', 'count' => 2, 'price' => 753.14],
-                        ['name' => 'Product 2', 'count' => 1, 'price' => 123]
+                        ['name' => 'Product 2', 'count' => 1, 'price' => 123],
                     ],
                     'column' => [
                         [
@@ -3319,7 +3319,7 @@ class TemplateParserTest extends \PHPUnit\Framework\TestCase
                     'comment' => 'bar',
                     'list' => [
                         ['name' => 'Product 1', 'count' => 2, 'price' => 753.14],
-                        ['name' => 'Product 2', 'count' => 1, 'price' => 123]
+                        ['name' => 'Product 2', 'count' => 1, 'price' => 123],
                     ],
                     'column' => [
                         [
@@ -3469,7 +3469,7 @@ class TemplateParserTest extends \PHPUnit\Framework\TestCase
                     'comment' => 'bar',
                     'list' => [
                         ['name' => 'Product 1', 'count' => 2, 'price' => 753.14],
-                        ['name' => 'Product 2', 'count' => 1, 'price' => 123]
+                        ['name' => 'Product 2', 'count' => 1, 'price' => 123],
                     ],
                     'column' => [
                         [

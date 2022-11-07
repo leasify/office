@@ -12,7 +12,7 @@ class Generated
     /**
      * Handle template's saving
      *
-     * @var \Closure(\AnourValar\Office\Drivers\SaveInterface $driver, \AnourValar\Office\Format $format)|null
+     * @var \Closure(\AnourValar\Office\Drivers\SaveInterface $driver, \AnourValar\Office\Format $format)
      */
     protected ?\Closure $hookSave = null;
 
@@ -26,22 +26,12 @@ class Generated
     }
 
     /**
-     * @see magic
-     *
-     * @return string
-     */
-    public function __toString()
-    {
-        return $this->save();
-    }
-
-    /**
      * Save generated document to the buffer
      *
      * @param \AnourValar\Office\Format $format
      * @return string
      */
-    public function save(Format $format = Format::Xlsx): string
+    public function save(Format $format): string
     {
         ob_start();
 
@@ -59,10 +49,14 @@ class Generated
      *
      * @param string $filename
      * @param \AnourValar\Office\Format $format
-     * @return int|NULL
+     * @return int|null
      */
-    public function saveAs(string $filename, Format $format = Format::Xlsx): ?int
+    public function saveAs(string $filename, Format $format = null): ?int
     {
+        if (! $format) {
+            $format = Format::from(mb_strtolower(pathinfo($filename, PATHINFO_EXTENSION)));
+        }
+
         return file_put_contents($filename, $this->save($format));
     }
 
