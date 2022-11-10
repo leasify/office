@@ -180,6 +180,7 @@ class ParserOptimized
         $stepLeft = 0;
         $stepOrigin = 0;
         $stepRows = 0;
+        $dataKeys = array_keys($data);
 
         // fill in missing rows
         $prevRow = 0;
