@@ -12,7 +12,7 @@ class TemplateService
     /**
      * @var \AnourValar\Office\Template\Parser
      */
-    protected \AnourValar\Office\Template\Parser $parser;
+    protected $parser;
 
     /**
      * Handle template's loading
