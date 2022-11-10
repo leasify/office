@@ -49,7 +49,7 @@ class TemplateService
      */
     public function __construct(
         string $driverClass = \AnourValar\Office\Drivers\PhpSpreadsheetDriver::class,
-        \AnourValar\Office\Template\Parser $parser = new \AnourValar\Office\Template\Parser()
+        $parser = new \AnourValar\Office\Template\Parser()
     ) {
         $this->driverClass = $driverClass;
         $this->parser = $parser;
