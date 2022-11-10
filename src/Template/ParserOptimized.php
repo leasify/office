@@ -2,7 +2,11 @@
 
 namespace AnourValar\Office\Template;
 
-class Parser
+/**
+ *
+ * @description Bara optimerad för [contracts.*]
+ */
+class ParserOptimized
 {
     /**
      * Handle with special types of data
