@@ -33,7 +33,7 @@ class SheetsService
     /**
      * Cell's value handler (on set)
      *
-     * @var \Closure(SheetsInterface $driver, string $cell, mixed $value, int $sheetIndex, string $column, int $row)
+     * @var \Closure(SheetsInterface $driver, string $column, int $row, mixed $value, int $sheetIndex)
      */
     protected ?\Closure $hookValue = null;
 
@@ -75,6 +75,9 @@ class SheetsService
 
         if ($this->hookLoad) {
             $driver = ($this->hookLoad)($this->driver, $templateFile, $templateFormat);
+            if ($driver instanceof Generated) {
+                $driver = $driver->driver;
+            }
         } else {
             $driver = $this->driver->load($templateFile, $templateFormat);
         }
@@ -160,7 +163,7 @@ class SheetsService
      * @throws \LogicException
      * @return void
      */
-    protected function handleSheet(SheetsInterface &$driver, array $data, int $sheetIndex, bool $autoCellFormat): void
+    protected function handleSheet(SheetsInterface &$driver, array &$data, int $sheetIndex, bool $autoCellFormat): void
     {
         // Get schema of the document
         $schema = $this->parser->schema($driver->getValues(null), $data, $driver->getMergeCells())->toArray();
@@ -168,9 +171,9 @@ class SheetsService
         // Rows
         foreach ($schema['rows'] as $row) {
             if ($row['action'] == 'add') {
-                $driver->addRow($row['row']);
+                $driver->addRow($row['row'], $row['qty']);
             } elseif ($row['action'] == 'delete') {
-                $driver->deleteRow($row['row']);
+                $driver->deleteRow($row['row'], $row['qty']);
             } else {
                 throw new \LogicException('Incorrect usage.');
             }
@@ -212,18 +215,20 @@ class SheetsService
     {
         foreach ($data as $row => &$columns) {
             foreach ($columns as $column => &$value) {
-                $isNull = is_null($value);
-
                 if ($value instanceof \Closure) {
                     // Private Closure
-                    $value = $value($driver, $column.$row, $column, $row);
+                    $value = $value($driver, $column, $row);
+
+                    if (is_null($value)) {
+                        unset($data[$row][$column]);
+                    }
                 } elseif ($this->hookValue) {
                     // Hook: value
-                    $value = ($this->hookValue)($driver, $column.$row, $value, $sheetIndex, $column, $row);
-                }
+                    $value = ($this->hookValue)($driver, $column, $row, $value, $sheetIndex);
 
-                if (! $isNull && is_null($value)) {
-                    unset($data[$row][$column]);
+                    if (is_null($value)) {
+                        unset($data[$row][$column]);
+                    }
                 }
             }
             unset($value);

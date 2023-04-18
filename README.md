@@ -11,25 +11,25 @@ composer require anourvalar/office
 ### Phpspreadsheet is required to work with Excel (xlsx).
 
 ```bash
-composer require phpoffice/phpspreadsheet "^1.24"
+composer require phpoffice/phpspreadsheet "^1.28"
 ```
 
 ### Zipstream-php is required to work with Word (docx).
 
 ```bash
-composer require maennchen/zipstream-php "^2.2"
+composer require maennchen/zipstream-php "^2.4"
 ```
 
 ### Mpdf is required to work with PDF.
 
 ```bash
-composer require mpdf/mpdf: "^8.0"
+composer require mpdf/mpdf: "^8.1"
 ```
 
 
 ## Generate a document from an XLSX (Excel) template
 
-### One-dimensional table
+### One-dimensional table (basic usage)
 
 **template1.xlsx:**
 
@@ -61,16 +61,23 @@ $data = [
     ],
 ];
 
-// Save as XLSX (Excel)
+// Save to the file
 (new \AnourValar\Office\SheetsService())
     ->generate(
-        'template1.xlsx', // path to template
-        $data // input data
+        'template1.xlsx', // template filename
+        $data // markers
     )
     ->saveAs(
-        'generated_document.xlsx', // path to save
+        'generated_document.xlsx', // filename
         \AnourValar\Office\Format::Xlsx // save format
     );
+
+// Output to the browser
+header('Content-type: ' . \AnourValar\Office\Format::Xlsx->contentType());
+header('Content-Disposition: attachment; filename="generated_document.xlsx"');
+echo (new \AnourValar\Office\SheetsService())
+    ->generate('template1.xlsx', $data)
+    ->save(\AnourValar\Office\Format::Xlsx);
 
 // Available formats:
 // \AnourValar\Office\Format::Xlsx
@@ -140,14 +147,14 @@ $data = [
 $data = [
     'foo' => 'Hello',
 
-    'bar' => function (\AnourValar\Office\Drivers\SheetsInterface $driver, $cell) {
+    'bar' => function (SheetsInterface $driver, $column, $row) {
         $driver->insertImage('logo.png', $cell, ['width' => 100, 'offset_y' => -45]);
-        return 'Logo!'; // replace marker "[bar]" with return value
+        return 'Logo!'; // replace marker "[bar]" with "Logo!"
     }
 ];
 
 (new \AnourValar\Office\SheetsService())
-    ->hookValue(function (SheetsInterface $driver, $cell, $value, int $sheetIndex) {
+    ->hookValue(function (SheetsInterface $driver, $column, $row, $value, $sheetIndex) {
         // Hook will be called for every cell which is changing
 
         $value .= ' world';
@@ -163,7 +170,7 @@ $data = [
 // Available hooks:
 // hookLoad: Closure(SheetsInterface $driver, string $templateFile, Format $templateFormat)
 // hookBefore: Closure(SheetsInterface $driver, array &$data)
-// hookValue: Closure(SheetsInterface $driver, string $cell, mixed $value, int $sheetIndex)
+// hookValue: Closure(SheetsInterface $driver, string $column, int $row, $value, int $sheetIndex)
 // hookAfter: Closure(SheetsInterface $driver)
 ```
 
@@ -281,7 +288,7 @@ $data = [
 
 ![Demo](https://anour.ru/resources/office-v1-41.png)
 
-### Advanced usage
+### Advanced usage (generators)
 
 ```php
 $headers = [
@@ -338,3 +345,23 @@ $data = function () {
 **generated_grid.xlsx:**
 
 ![Demo](https://anour.ru/resources/office-v1-51.png)
+
+### Performance
+
+By default, GridService uses PhpSpreadsheetDriver which gives a lot of features and flexability.
+The only cons are performance and memory consumtion.
+
+ZipDriver as an alternative is simpler, but much more faster:
+
+```php
+$data = [
+    ['William', 3000],
+    ['James', 4000],
+    ['Sveta', 5000],
+];
+
+// Save as XLSX (Excel)
+(new \AnourValar\Office\GridService(new \AnourValar\Office\Drivers\ZipDriver()))
+    ->generate(['Name', 'Sales'], $data)
+    ->saveAs('generated_grid.xlsx');
+```

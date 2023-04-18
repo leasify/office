@@ -68,7 +68,7 @@ class Parser
      * @param array $data
      * @return array
      */
-    protected function parseData(array $data): array
+    protected function parseData(array &$data): array
     {
         $result = [];
 
@@ -92,8 +92,8 @@ class Parser
         foreach ($mergeCells as &$item) {
             $item = explode(':', $item);
 
-            $item[0] = preg_split('#([A-Z]+)([\d]+)#', $item[0], -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
-            $item[1] = preg_split('#([A-Z]+)([\d]+)#', $item[1], -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
+            $item[0] = preg_split('#([A-Z]+)([\d]+)#S', $item[0], -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
+            $item[1] = preg_split('#([A-Z]+)([\d]+)#S', $item[1], -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
         }
         unset($item);
 
@@ -114,7 +114,7 @@ class Parser
                 }
 
                 $value = preg_replace_callback(
-                    '#\[(\$?\!\s*|\$?\=\s*)?([a-z\d\.\_\*]+)\]#i',
+                    '#\[(\$?\!\s*|\$?\=\s*)?([a-z\d\.\_\*]+)\]#iS',
                     function ($patterns) use ($data) {
                         if (array_key_exists($patterns[2], $data)) {
                             return $patterns[0];
@@ -123,6 +123,7 @@ class Parser
                         $result = null;
                         foreach (explode('.', $patterns[2]) as $pattern) {
                             $changed = true;
+                            $prevResult = $result;
                             while ($changed) {
                                 $changed = false;
 
@@ -139,15 +140,15 @@ class Parser
                                     $result .= '.0';
                                     $changed = true;
                                 }
+                            }
 
-                                if (array_key_exists($result, $data)) {
-                                    break 2;
-                                }
+                            if ($result === $prevResult && ($pattern != '*' || mb_substr($result, -2) != '.0')) {
+                                return $patterns[0];
                             }
                         }
 
                         if ($result && array_key_exists($result, $data) && ! is_array($data[$result])) {
-                            $result = preg_replace('#\.0(\.|$)#', '.*$1', $result);
+                            $result = preg_replace('#\.0(\.|$)#S', '.*$1', $result);
                             return sprintf('[%s%s]', $patterns[1], $result);
                         }
 
@@ -222,13 +223,13 @@ class Parser
                 }
 
                 if (is_string($value)) {
-                    $columns[$column] = preg_replace('#\.\*(\.|\])#', '.0$1', $value);
+                    $columns[$column] = preg_replace('#\.\*(\.|\])#S', '.0$1', $value);
                 }
             }
 
 
             if (! $stepRows && $this->shouldBeDeleted($columns, $data)) {
-                $schema->deleteRow($row + $shift);
+                $this->deleteRow($schema, $mergeCells, $row + $shift);
                 $shift--;
                 continue;
             }
@@ -241,7 +242,7 @@ class Parser
             if (! $additionRows) {
                 foreach ($columns as $column => $value) {
                     if (
-                        ! preg_match('#\[(\$?\!\s*|\$?\=\s*)?[a-z][a-z\d\_\.]+\]#i', (string) $value)
+                        ! preg_match('#\[(\$?\!\s*|\$?\=\s*)?[a-z][a-z\d\_\.]+\]#iS', (string) $value)
                         && ! preg_match('#^\=[A-Z][A-Z\.\d]#', (string) $value)
                     ) {
                         unset($columns[$column]);
@@ -285,7 +286,6 @@ class Parser
                     foreach ($mergeMapX as $mergeItemX) {
                         $curr++;
 
-                        $schema->copyStyle($mergeItemX.($row + $shift), $curr.($row + $shift));
                         $schema->copyWidth($mergeItemX, $curr);
                     }
 
@@ -294,15 +294,15 @@ class Parser
                 }
             }
 
-            $dataSchema[$row + $shift] = $columns;
+            $dataSchema[$row + $shift] = array_filter($columns, fn ($item) => $item !== null && $item !== '');
             $originalRow = ($row + $shift);
 
             if ($additionRows) {
                 foreach ($columns as $currKey => $currValue) {
-                    $hasMarker = preg_match('#\[([a-z][a-z\d\.\_]+)\]#i', (string) $currValue);
+                    $hasMarker = preg_match('#\[([a-z][a-z\d\.\_]+)\]#iS', (string) $currValue);
 
                     foreach ($mergeCells as $item) {
-                        if ($currKey.$originalRow == $item[0][0].$item[0][1]) {
+                        if ($currKey.$originalRow == $item[0][0].$item[0][1] && $item[0][1] != $item[1][1]) {
                             if (! $hasMarker) {
                                 unset($columns[$currKey]);
                                 continue;
@@ -322,13 +322,15 @@ class Parser
                 $additionRows--;
 
                 foreach ($columns as &$column) {
-                    $column = $this->increments((string) $column, true);
+                    if (is_string($column)) {
+                        $column = $this->increments($column, true);
+                    }
                 }
                 unset($column);
 
-                $dataSchema[$row + $shift] = $columns;
+                $dataSchema[$row + $shift] = array_filter($columns, fn ($item) => $item !== null && $item !== '');
                 if (! $step) {
-                    $schema->addRow($row + $shift);
+                    $this->addRow($schema, $mergeCells, $row + $shift);
                 }
 
                 foreach (array_keys($columns) as $curr) {
@@ -341,11 +343,6 @@ class Parser
                             $schema->mergeCells(
                                 sprintf('%s%s:%s%s', $item[0][0], ($row + $shift), $item[1][0], ($row + $shift + $diff))
                             );
-
-                            while ($item[0][0] < $item[1][0]) {
-                                $item[0][0]++;
-                                $schema->copyStyle($item[0][0].$item[0][1], $item[0][0].($row + $shift));
-                            }
                         }
                     }
                 }
@@ -353,7 +350,7 @@ class Parser
                 $iterate = $maxMergeY;
                 while ($iterate) {
                     $shift++;
-                    $schema->addRow($row + $shift);
+                    $this->addRow($schema, $mergeCells, $row + $shift);
                     $iterate--;
                 }
             }
@@ -390,18 +387,24 @@ class Parser
      */
     protected function shiftFormulas(array &$values, SchemaMapper &$schema, array &$mergeCells): void
     {
+        // Prepares
         $ranges = [];
 
-        // "Outside" shifts
-        foreach ($schema->toArray()['rows'] as $action) {
-            foreach ($values as $row => &$columns) {
-                foreach ($columns as &$value) {
-                    if (! preg_match('#^\=[A-Z][A-Z\.\d]#', (string) $value)) {
-                        continue;
-                    }
+        $map = [];
+        foreach ($values as $row => $columns) {
+            foreach ($columns as $column => $value) {
+                if (preg_match('#^\=[A-Z][A-Z\.\d]#', (string) $value)) {
+                    $map[$row][$column] = $value;
+                }
+            }
+        }
 
-                    $value = preg_replace_callback(
-                        '#([A-Z]+)([\d]+)#',
+        // "Outside" shifts
+        foreach ($schema->getOriginal()['rows'] as $action) {
+            foreach ($map as $row => $columns) {
+                foreach ($columns as $column => $value) {
+                    $map[$row][$column] = $values[$row][$column] = preg_replace_callback(
+                        '#([A-Z]+)([\d]+)#S',
                         function ($patterns) use ($action) {
                             if ($action['action'] == 'add') {
 
@@ -422,15 +425,13 @@ class Parser
                         $value
                     );
                 }
-                unset($value);
             }
-            unset($columns);
         }
 
         // "Inside" shifts
         $prev = 0;
         $prevAction = null;
-        foreach ($schema->toArray()['rows'] as $action) {
+        foreach ($schema->getOriginal()['rows'] as $action) {
             if ($prevAction && $prevAction['row'] + 1 == $action['row'] && $action['action'] == 'add' && $prevAction['action'] == 'add') {
                 $prev++;
             } else {
@@ -441,14 +442,10 @@ class Parser
                 $prev = 0;
             }
 
-            foreach ($values as $row => &$columns) {
-                foreach ($columns as &$value) {
-                    if (! preg_match('#^\=[A-Z][A-Z\.\d]#', (string) $value)) {
-                        continue;
-                    }
-
-                    $value = preg_replace_callback(
-                        '#([A-Z]+)([\d]+)#',
+            foreach ($map as $row => $columns) {
+                foreach ($columns as $column => $value) {
+                    $map[$row][$column] = $values[$row][$column] = preg_replace_callback(
+                        '#([A-Z]+)([\d]+)#S',
                         function ($patterns) use ($action, $row, $prev) {
                             if ($action['action'] == 'add') {
 
@@ -463,9 +460,7 @@ class Parser
                         $value
                     );
                 }
-                unset($value);
             }
-            unset($columns);
 
             $prevAction = $action;
         }
@@ -480,21 +475,17 @@ class Parser
                     $value['from'] >= $merge[0][1]
                     && $value['from'] <= $merge[1][1]
                     && $merge[0][1] != $merge[1][1]
-                    && preg_match('#\[([a-z][a-z\d\.\_]+)\]#i', $values[$merge[0][1]][$merge[0][0]])
+                    && preg_match('#\[([a-z][a-z\d\.\_]+)\]#iS', ($values[$merge[0][1]][$merge[0][0]] ?? ''))
                 ) {
                     unset($ranges[$key]);
                 }
             }
         }
 
-        foreach ($values as $row => &$columns) {
-            foreach ($columns as &$value) {
-                if (! preg_match('#^\=[A-Z][A-Z\.\d]#', (string) $value)) {
-                    continue;
-                }
-
-                $value = preg_replace_callback(
-                    '#([A-Z]+)([\d]+)\:([A-Z]+)([\d]+)#',
+        foreach ($map as $row => $columns) {
+            foreach ($columns as $column => $value) {
+                $map[$row][$column] = $values[$row][$column] = preg_replace_callback(
+                    '#([A-Z]+)([\d]+)\:([A-Z]+)([\d]+)#S',
                     function ($patterns) use ($ranges) {
                         if ($patterns[2] == $patterns[4]) {
                             foreach ($ranges as $range) {
@@ -509,9 +500,7 @@ class Parser
                     $value
                 );
             }
-            unset($value);
         }
-        unset($columns);
     }
 
     /**
@@ -522,6 +511,18 @@ class Parser
      */
     protected function replaceMarkers(array &$dataSchema, array &$data, SchemaMapper &$schema): void
     {
+        $canonizeKeys = ['scalar' => [], 'closure' => []];
+        $canonizeValues = ['scalar' => [], 'closure' => []];
+        foreach ($data as $from => $to) {
+            if (is_scalar($to) || is_null($to)) {
+                $canonizeKeys['scalar'][] = "[$from]";
+                $canonizeValues['scalar'][] = $to;
+            } else {
+                $canonizeKeys['closure'][] = "[$from]";
+                $canonizeValues['closure'][] = $to;
+            }
+        }
+
         foreach ($dataSchema as $row => $columns) {
             ksort($columns);
 
@@ -531,16 +532,20 @@ class Parser
                 }
 
                 if (is_string($value) && mb_strlen($value)) {
-                    $value = preg_replace('#\[(\$?\!\s*|\$?\=\s*)[a-z][a-z\d\_\.]+\]#i', '', $value);
+                    $value = preg_replace('#\[(\$?\!\s*|\$?\=\s*)[a-z][a-z\d\_\.]+\]#iS', '', $value);
                     $value = trim($value);
-                }
 
-                foreach ($data as $from => $to) {
-                    $value = $this->replace($from, $to, $value);
+                    if (($key = array_search($value, $canonizeKeys['scalar'])) !== false) { // type (cast) support
+                        $value = $canonizeValues['scalar'][$key];
+                    } elseif (($key = array_search($value, $canonizeKeys['closure'])) !== false) {
+                        $value = $canonizeValues['closure'][$key];
+                    } else {
+                        $value = str_replace($canonizeKeys['scalar'], $canonizeValues['scalar'], $value);
+                    }
                 }
 
                 if (is_string($value) && mb_strlen($value)) {
-                    $value = preg_replace('#\[[a-z][a-z\d\_\.]+\]#i', '', $value);
+                    $value = preg_replace('#\[[a-z][a-z\d\_\.]+\]#iS', '', $value);
                     $value = trim($value);
                 }
 
@@ -584,7 +589,7 @@ class Parser
      */
     private function hasMarker(string $marker, ?string $value): bool
     {
-        $value = preg_replace('#\.\*(\.|$|)#', '.0$1', (string) $value, -1, $count);
+        $value = preg_replace('#\.\*(\.|$|)#S', '.0$1', (string) $value, -1, $count);
         if (! $count) {
             return false;
         }
@@ -602,7 +607,7 @@ class Parser
      * @param string $prefix
      * @return bool
      */
-    private function shouldBeDeleted(array $columns, array $data, string $prefix = ''): bool
+    private function shouldBeDeleted(array $columns, array &$data, string $prefix = ''): bool
     {
         $prefix = preg_quote($prefix);
 
@@ -696,11 +701,11 @@ class Parser
     private function increments(string $value, bool $first, int $shift = 1): ?string
     {
         return preg_replace_callback(
-            '#\[([a-z][a-z\d\.\_]+)\]#i',
+            '#\[(\$?\!\s*|\$?\=\s*)?([a-z][a-z\d\.\_]+)\]#iS',
             function ($patterns) use ($first, $shift) {
-                $patterns[1] = $this->increment($patterns[1], $first, $shift);
-                if ($patterns[1]) {
-                    return '[' . $patterns[1] . ']';
+                $patterns[2] = $this->increment($patterns[2], $first, $shift);
+                if ($patterns[2]) {
+                    return '[' . $patterns[1] . $patterns[2] . ']';
                 }
 
                 return $patterns[0];
@@ -710,32 +715,46 @@ class Parser
     }
 
     /**
-     * @param string $from
-     * @param mixed $to
-     * @param mixed $value
-     * @throws \LogicException
-     * @return mixed
+     * @param \AnourValar\Office\Sheets\SchemaMapper $schema
+     * @param array $mergeCells
+     * @param int $row
+     * @return void
      */
-    private function replace(string $from, mixed $to, $value): mixed
+    private function addRow(SchemaMapper &$schema, array &$mergeCells, int $row): void
     {
-        if (! is_string($value)) {
-            return $value;
+        $schema->addRow($row);
+
+        foreach ($mergeCells as &$mergeCell) {
+            if ($mergeCell[0][1] >= $row) {
+                $mergeCell[0][1]++;
+            }
+
+            if ($mergeCell[1][1] >= $row) {
+                $mergeCell[1][1]++;
+            }
         }
+        unset($mergeCell);
+    }
 
-        $from = "[$from]";
+    /**
+     * @param \AnourValar\Office\Sheets\SchemaMapper $schema
+     * @param array $mergeCells
+     * @param int $row
+     * @return void
+     */
+    private function deleteRow(SchemaMapper &$schema, array &$mergeCells, int $row): void
+    {
+        $schema->deleteRow($row);
 
-        if ($value == $from) {
-            return $to;
+        foreach ($mergeCells as &$mergeCell) {
+            if ($mergeCell[0][1] >= $row) {
+                $mergeCell[0][1]--;
+            }
+
+            if ($mergeCell[1][1] >= $row) {
+                $mergeCell[1][1]--;
+            }
         }
-
-        if (strpos($value, $from) === false) {
-            return $value;
-        }
-
-        if ($to instanceof \Closure) {
-            throw new \LogicException('Parameter cannot be used as part of cell\'s value if it\'s a closure.');
-        }
-
-        return str_replace($from, (string) $to, $value);
+        unset($mergeCell);
     }
 }
