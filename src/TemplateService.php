@@ -68,7 +68,9 @@ class TemplateService
         string $templateFile,
         mixed $data,
         Format $templateFormat = Format::Xlsx,
-        bool $autoCellFormat = false
+        bool $autoCellFormat = false,
+        // Leasify optimized
+        bool $skipActions = false,
     ): Generated {
         // Get instance of driver
         $driver = new $this->driverClass();
@@ -99,13 +101,15 @@ class TemplateService
             $schema = $this->parser->schema($driver->getValues(null), $data, $driver->getMergeCells())->toArray();
 
             // rows
-            foreach ($schema['rows'] as $row) {
-                if ($row['action'] == 'add') {
-                    $driver->addRow($row['row']);
-                } elseif ($row['action'] == 'delete') {
-                    $driver->deleteRow($row['row']);
-                } else {
-                    throw new \LogicException('Incorrect usage.');
+            if (!$skipActions) {
+                foreach ($schema['rows'] as $row) {
+                    if ($row['action'] == 'add') {
+                        $driver->addRow($row['row']);
+                    } elseif ($row['action'] == 'delete') {
+                        $driver->deleteRow($row['row']);
+                    } else {
+                        throw new \LogicException('Incorrect usage.');
+                    }
                 }
             }
 
