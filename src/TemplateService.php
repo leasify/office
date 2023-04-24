@@ -15,6 +15,11 @@ class TemplateService
     protected $parser;
 
     /**
+     * @var bool
+     */
+    protected bool $skipActions;
+
+    /**
      * Handle template's loading
      *
      * @var \Closure(TemplateInterface $driver, string $templateFile, \AnourValar\Office\Format $templateFormat)|null
@@ -49,10 +54,12 @@ class TemplateService
      */
     public function __construct(
         string $driverClass = \AnourValar\Office\Drivers\PhpSpreadsheetDriver::class,
-        $parser = new \AnourValar\Office\Template\Parser()
+        $parser = new \AnourValar\Office\Template\Parser(),
+        $skipActions = false,
     ) {
         $this->driverClass = $driverClass;
         $this->parser = $parser;
+        $this->skipActions = $skipActions;
     }
 
     /**
@@ -69,8 +76,6 @@ class TemplateService
         mixed $data,
         Format $templateFormat = Format::Xlsx,
         bool $autoCellFormat = false,
-        // Leasify optimized
-        bool $skipActions = false,
     ): Generated {
         // Get instance of driver
         $driver = new $this->driverClass();
@@ -101,7 +106,7 @@ class TemplateService
             $schema = $this->parser->schema($driver->getValues(null), $data, $driver->getMergeCells())->toArray();
 
             // rows
-            if (!$skipActions) {
+            if (!$this->skipActions) {
                 foreach ($schema['rows'] as $row) {
                     if ($row['action'] == 'add') {
                         $driver->addRow($row['row']);
