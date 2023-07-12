@@ -20,6 +20,11 @@ class TemplateService
     protected bool $skipActions;
 
     /**
+     * @var bool
+     */
+    protected bool $returnAfterLoad;
+
+    /**
      * Handle template's loading
      *
      * @var \Closure(TemplateInterface $driver, string $templateFile, \AnourValar\Office\Format $templateFormat)|null
@@ -56,10 +61,12 @@ class TemplateService
         string $driverClass = \AnourValar\Office\Drivers\PhpSpreadsheetDriver::class,
         $parser = new \AnourValar\Office\Template\Parser(),
         $skipActions = false,
+        $returnAfterLoad = false,
     ) {
         $this->driverClass = $driverClass;
         $this->parser = $parser;
         $this->skipActions = $skipActions;
+        $this->returnAfterLoad = $returnAfterLoad;
     }
 
     /**
@@ -91,6 +98,11 @@ class TemplateService
             ($this->hookLoad)($driver, $templateFile, $templateFormat);
         } else {
             $driver->load($templateFile, $templateFormat);
+        }
+
+        // Just so we can merge already created files. Example contracts tab created from phpexcel instead.
+        if ($this->returnAfterLoad) {
+            return new Generated($driver);
         }
 
         // Hook: before
