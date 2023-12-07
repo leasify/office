@@ -78,6 +78,8 @@ class PhpSpreadsheetDriver implements TemplateInterface, GridInterface, MixInter
             $writer->writeAllSheets();
         }
 
+        $writer->setPreCalculateFormulas(false);
+
         $writer->save($file);
     }
 
