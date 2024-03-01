@@ -4,6 +4,7 @@ namespace AnourValar\Office\Drivers;
 
 class ZipDriver implements DocumentInterface, GridInterface
 {
+    use \AnourValar\Office\Traits\Parser;
     use \AnourValar\Office\Traits\XFormat;
 
     /**
@@ -33,6 +34,7 @@ class ZipDriver implements DocumentInterface, GridInterface
     /**
      * {@inheritDoc}
      * @see \AnourValar\Office\Drivers\LoadInterface::load()
+     * @psalm-suppress InaccessibleProperty
      */
     public function load(string $file, \AnourValar\Office\Format $format): self
     {
@@ -40,10 +42,10 @@ class ZipDriver implements DocumentInterface, GridInterface
             throw new \LogicException('Driver only supports Docx, Xlsx formats.');
         }
 
-        $instance = new static;
+        $instance = new static();
         $fileSystem = [];
 
-        $zipArchive = new \ZipArchive;
+        $zipArchive = new \ZipArchive();
         $zipArchive->open($file);
         try {
             $count = $zipArchive->numFiles;
@@ -81,7 +83,7 @@ class ZipDriver implements DocumentInterface, GridInterface
         try {
             foreach ($this->fileSystem as $filename => $content) {
                 $zipStream->addFile($filename, $content);
-             }
+            }
         } catch (\Throwable $e) {
             $zipStream->finish();
             ob_get_clean();
@@ -147,7 +149,7 @@ class ZipDriver implements DocumentInterface, GridInterface
             $column = 'A';
             foreach ($titles as $value) {
                 $value = (string) $value;
-                if ($value === null || $value === '') {
+                if ($value === '') {
                     $firstColumn++;
                     $column++;
                     continue;
@@ -192,7 +194,7 @@ class ZipDriver implements DocumentInterface, GridInterface
 
                 if ($value === null || $value === '') {
 
-                    if ($column >= $firstColumn) {
+                    if ($this->isColumnGE($column, $firstColumn)) {
                         $sheet .= '<c r="'.$column.$row.'" s="'.($styles[$column] ?? $styles['string']).'"/>';
                     }
 
@@ -239,7 +241,7 @@ class ZipDriver implements DocumentInterface, GridInterface
         // Columns
         $column = 'A';
         for ($index = 1; $index <= $columnsCount; $index++) {
-            if ($column >= $firstColumn) {
+            if ($this->isColumnGE($column, $firstColumn)) {
                 $width = ($this->gridOptions['width'][$column] ?? 20);
                 $cols .= '<col min="'.$index.'" max="'.$index.'" width="'.$width.'" customWidth="1"/>';
             }

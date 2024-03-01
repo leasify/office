@@ -6,6 +6,8 @@ use AnourValar\Office\Drivers\GridInterface;
 
 class GridService
 {
+    use \AnourValar\Office\Traits\Parser;
+
     /**
      * @var \AnourValar\Office\Drivers\GridInterface
      */
@@ -59,7 +61,7 @@ class GridService
      * Generate a document from the template (grid)
      *
      * @param array $headers
-     * @param iterable|\Closure<iterable> $data
+     * @param iterable|\Closure $data
      * @param string $leftTopCorner
      * @return \AnourValar\Office\Generated
      */
@@ -173,6 +175,7 @@ class GridService
      * @param mixed $totalRange
      * @param mixed $columns
      * @return \Closure
+     * @psalm-suppress UnusedForeachValue
      */
     protected function getGenerator(
         \AnourValar\Office\Drivers\GridInterface $driver,
@@ -198,7 +201,7 @@ class GridService
             // left top corner: column
             $firstColumn = 'A';
             $indent = [];
-            while ($firstColumn < $ltc[0]) {
+            while ($this->isColumnLE($firstColumn, $ltc[0]) && $firstColumn != $ltc[0]) {
                 $firstColumn++;
                 $indent[] = '';
             }
@@ -285,7 +288,7 @@ class GridService
             if ($totalRange) {
                 $keys = array_keys($headers);
 
-                while ($firstColumn <= $lastColumn) {
+                while ($this->isColumnLE($firstColumn, $lastColumn)) {
                     if (! $keys) {
                         $columns[] = $firstColumn;
                     } else {

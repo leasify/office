@@ -8,6 +8,8 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 
 class PhpSpreadsheetDriver implements SheetsInterface, GridInterface, MixInterface
 {
+    use \AnourValar\Office\Traits\Parser;
+
     /**
      * @var string
      */
@@ -44,10 +46,11 @@ class PhpSpreadsheetDriver implements SheetsInterface, GridInterface, MixInterfa
     /**
      * {@inheritDoc}
      * @see \AnourValar\Office\Drivers\GridInterface::create()
+     * @psalm-suppress InaccessibleProperty
      */
     public function create(): self
     {
-        $instance = new static;
+        $instance = new static();
         $instance->spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $instance->sourceActiveSheetIndex = 0;
 
@@ -58,10 +61,11 @@ class PhpSpreadsheetDriver implements SheetsInterface, GridInterface, MixInterfa
     /**
      * {@inheritDoc}
      * @see \AnourValar\Office\Drivers\LoadInterface::load()
+     * @psalm-suppress InaccessibleProperty
      */
     public function load(string $file, \AnourValar\Office\Format $format): self
     {
-        $instance = new static;
+        $instance = new static();
         $instance->spreadsheet = IOFactory::createReader($instance->getFormat($format))->load($file);
         $instance->sourceActiveSheetIndex = $instance->spreadsheet->getActiveSheetIndex();
 
@@ -239,7 +243,7 @@ class PhpSpreadsheetDriver implements SheetsInterface, GridInterface, MixInterfa
      */
     public function getMergeCells(): array
     {
-        return array_values( $this->sheet()->getMergeCells() );
+        return array_values($this->sheet()->getMergeCells());
     }
 
     /**
@@ -527,10 +531,10 @@ class PhpSpreadsheetDriver implements SheetsInterface, GridInterface, MixInterfa
             if (
                 $item[0][1] >= $range[0][1] && $item[0][1] <= $range[1][1] // rows
                 && $item[1][1] >= $range[0][1] && $item[1][1] <= $range[1][1]
-                && $item[0][0] >= $range[0][0] && $item[0][0] <= $range[1][0] // columns
-                && $item[1][0] >= $range[0][0] && $item[1][0] <= $range[1][0]
+                && $this->isColumnGE($item[0][0], $range[0][0]) && $this->isColumnLE($item[0][0], $range[1][0]) // columns
+                && $this->isColumnGE($item[1][0], $range[0][0]) && $this->isColumnLE($item[1][0], $range[1][0])
             ) {
-                $this->mergeCells($item[0][0].($item[0][1]+$shift) . ':' . $item[1][0].($item[1][1]+$shift));
+                $this->mergeCells($item[0][0].($item[0][1] + $shift) . ':' . $item[1][0].($item[1][1] + $shift));
             }
         }
 
@@ -541,7 +545,7 @@ class PhpSpreadsheetDriver implements SheetsInterface, GridInterface, MixInterfa
 
             // Style, CellFormat, Value
             $column = $range[0][0];
-            while ($column <= $range[1][0]) {
+            while ($this->isColumnLE($column, $range[1][0])) {
                 $this->copyStyle($column . $curr, $column . ($curr + $shift));
                 $this->copyCellFormat($column . $curr, $column . ($curr + $shift));
 
@@ -616,7 +620,7 @@ class PhpSpreadsheetDriver implements SheetsInterface, GridInterface, MixInterfa
         }
 
         if (isset($style['align'])) {
-            $align = match($style['align']) {
+            $align = match ($style['align']) {
                 \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT => 'left',
                 \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER => 'center',
                 \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT => 'right',
@@ -629,7 +633,7 @@ class PhpSpreadsheetDriver implements SheetsInterface, GridInterface, MixInterfa
         }
 
         if (isset($style['valign'])) {
-            $valign = match($style['valign']) {
+            $valign = match ($style['valign']) {
                 \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP => 'top',
                 \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER => 'center',
                 \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_BOTTOM => 'bottom',
@@ -745,6 +749,7 @@ class PhpSpreadsheetDriver implements SheetsInterface, GridInterface, MixInterfa
             \AnourValar\Office\Format::Pdf => 'Mpdf',
             \AnourValar\Office\Format::Html => 'Html',
             \AnourValar\Office\Format::Ods => 'Ods',
+            default => throw new \RuntimeException('Format is not supported.'),
         };
     }
 

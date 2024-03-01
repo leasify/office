@@ -580,11 +580,11 @@ class GridServiceTest extends \PHPUnit\Framework\TestCase
 
     /**
      * @return \AnourValar\Office\Drivers\GridInterface
+     * @psalm-suppress UnusedForeachValue
      */
     protected function getDriver(): \AnourValar\Office\Drivers\GridInterface
     {
-        return new class implements \AnourValar\Office\Drivers\GridInterface
-        {
+        return new class () implements \AnourValar\Office\Drivers\GridInterface {
             public function create(): self
             {
                 return $this;
