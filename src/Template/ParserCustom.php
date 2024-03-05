@@ -4,9 +4,9 @@ namespace AnourValar\Office\Template;
 
 /**
  *
- * @description Bara optimerad för [contracts.*]
+ * @description Bara optimerad för egna rapportmallar.
  */
-class ParserOptimized
+class ParserCustom
 {
     /**
      * Handle with special types of data
@@ -285,7 +285,7 @@ class ParserOptimized
 
             if ($additionRows) {
                 foreach ($columns as $currKey => $currValue) {
-                    $hasMarker = preg_match('#\[([a-z][a-z\d\.\_]+)\]#i', $currValue);
+                    $hasMarker = preg_match('#\[([a-z][a-z\d\.\_]+)\]#i', (string) $currValue);
 
                     foreach ($mergeCells as $item) {
                         if ($currKey . $originalRow == $item[0][0] . $item[0][1]) {
@@ -382,7 +382,7 @@ class ParserOptimized
         foreach ($schema->toArray()['rows'] as $action) {
             foreach ($values as $row => &$columns) {
                 foreach ($columns as &$value) {
-                    if (!preg_match('#^\=[A-Z][A-Z\.\d]#', $value)) {
+                    if (!preg_match('#^\=[A-Z][A-Z\.\d]#', (string) $value)) {
                         continue;
                     }
 
@@ -427,7 +427,7 @@ class ParserOptimized
 
             foreach ($values as $row => &$columns) {
                 foreach ($columns as &$value) {
-                    if (!preg_match('#^\=[A-Z][A-Z\.\d]#', $value)) {
+                    if (!preg_match('#^\=[A-Z][A-Z\.\d]#', (string) $value)) {
                         continue;
                     }
 
@@ -472,7 +472,7 @@ class ParserOptimized
 
         foreach ($values as $row => &$columns) {
             foreach ($columns as &$value) {
-                if (!preg_match('#^\=[A-Z][A-Z\.\d]#', $value)) {
+                if (!preg_match('#^\=[A-Z][A-Z\.\d]#', (string) $value)) {
                     continue;
                 }
 
