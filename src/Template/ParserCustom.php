@@ -531,7 +531,7 @@ class ParserCustom
                     $value = null;
                 }
 
-                $string = str_replace(array('[', ']'), '', $value);
+                $string = str_replace(array('[', ']'), '', (string) $value);
                 if (array_key_exists($string, $data)) {
                     $value = $data[$string];
                 }
